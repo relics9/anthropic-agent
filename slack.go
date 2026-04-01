@@ -35,7 +35,7 @@ func handleSlackEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var payload map[string]interface{}
+	var payload map[string]any
 	if err := json.Unmarshal(bodyBytes, &payload); err != nil {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
@@ -48,7 +48,7 @@ func handleSlackEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	event, _ := payload["event"].(map[string]interface{})
+	event, _ := payload["event"].(map[string]any)
 	payloadType, _ := payload["type"].(string)
 	eventType, _ := event["type"].(string)
 	log.Printf("DEBUG: payload_type=%s, event_type=%s", payloadType, eventType)
@@ -62,7 +62,7 @@ func handleSlackEvent(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("OK"))
 }
 
-func processMention(event map[string]interface{}) {
+func processMention(event map[string]any) {
 	channelID, _ := event["channel"].(string)
 	threadTS, _ := event["thread_ts"].(string)
 	if threadTS == "" {
@@ -80,7 +80,7 @@ func processMention(event map[string]interface{}) {
 		analysis := analyzeWithClaude(errorContext)
 
 		if getBool(analysis, "should_create_pr") {
-			if fix, ok := analysis["fix_suggestion"].(map[string]interface{}); ok && getStr(fix, "description") != "" {
+			if fix, ok := analysis["fix_suggestion"].(map[string]any); ok && getStr(fix, "description") != "" {
 				prURL := createGitHubPR(analysis)
 				if prURL != "" {
 					postSlackMessage(channelID, threadTS, botToken,
@@ -135,7 +135,7 @@ func verifySlackSignature(headers http.Header, body []byte) bool {
 	return hmac.Equal([]byte(expected), []byte(signature))
 }
 
-func getThreadMessages(channelID, threadTS, botToken string) []map[string]interface{} {
+func getThreadMessages(channelID, threadTS, botToken string) []map[string]any {
 	apiURL := fmt.Sprintf("https://slack.com/api/conversations.replies?channel=%s&ts=%s", channelID, threadTS)
 	log.Printf("[Slack IN] conversations.replies channel=%s thread_ts=%s", channelID, threadTS)
 
@@ -150,13 +150,13 @@ func getThreadMessages(channelID, threadTS, botToken string) []map[string]interf
 	}
 	defer resp.Body.Close()
 
-	var data map[string]interface{}
+	var data map[string]any
 	json.NewDecoder(resp.Body).Decode(&data)
 
-	msgs, _ := data["messages"].([]interface{})
-	result := make([]map[string]interface{}, 0, len(msgs))
+	msgs, _ := data["messages"].([]any)
+	result := make([]map[string]any, 0, len(msgs))
 	for _, m := range msgs {
-		if msg, ok := m.(map[string]interface{}); ok {
+		if msg, ok := m.(map[string]any); ok {
 			result = append(result, msg)
 		}
 	}
@@ -164,7 +164,7 @@ func getThreadMessages(channelID, threadTS, botToken string) []map[string]interf
 	return result
 }
 
-func extractErrorContext(messages []map[string]interface{}) string {
+func extractErrorContext(messages []map[string]any) string {
 	var texts []string
 	for i, msg := range messages {
 		if i >= 10 {
@@ -198,7 +198,7 @@ func postSlackMessage(channelID, threadTS, botToken, text string) {
 	}
 	defer resp.Body.Close()
 
-	var result map[string]interface{}
+	var result map[string]any
 	json.NewDecoder(resp.Body).Decode(&result)
 	if ok, _ := result["ok"].(bool); !ok {
 		log.Printf("[Slack OUT] error: %v", result["error"])

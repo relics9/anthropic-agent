@@ -5,21 +5,21 @@ import (
 	"net/url"
 )
 
-func getStr(m map[string]interface{}, key string) string {
+func getStr(m map[string]any, key string) string {
 	if v, ok := m[key].(string); ok {
 		return v
 	}
 	return ""
 }
 
-func getStrOr(m map[string]interface{}, key, defaultVal string) string {
+func getStrOr(m map[string]any, key, defaultVal string) string {
 	if v := getStr(m, key); v != "" {
 		return v
 	}
 	return defaultVal
 }
 
-func getBool(m map[string]interface{}, key string) bool {
+func getBool(m map[string]any, key string) bool {
 	if v, ok := m[key].(bool); ok {
 		return v
 	}

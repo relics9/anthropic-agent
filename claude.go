@@ -21,7 +21,6 @@ func callClaude(prompt string, maxTokens int64) string {
 	return callClaudeWithModel(prompt, maxTokens, model)
 }
 
-
 func callClaudeWithModel(prompt string, maxTokens int64, model string) string {
 	client := anthropic.NewClient(option.WithAPIKey(os.Getenv("ANTHROPIC_API_KEY")))
 	log.Printf("[Claude IN] model=%s prompt=%d chars", model, len(prompt))
@@ -41,7 +40,7 @@ func callClaudeWithModel(prompt string, maxTokens int64, model string) string {
 	return message.Content[0].Text
 }
 
-func analyzeWithClaude(errorContext string) map[string]interface{} {
+func analyzeWithClaude(errorContext string) map[string]any {
 	prompt := fmt.Sprintf(`You are an expert engineer specializing in GCP error analysis.
 Analyze the following error log and respond in JSON format.
 
@@ -70,7 +69,7 @@ Notes:
 
 	responseText := callClaude(prompt, 2000)
 	if responseText == "" {
-		return map[string]interface{}{
+		return map[string]any{
 			"summary":          "Claude API call error",
 			"should_create_pr": false,
 		}
@@ -93,10 +92,10 @@ Notes:
 		}
 	}
 
-	var result map[string]interface{}
+	var result map[string]any
 	if err := json.Unmarshal([]byte(strings.TrimSpace(responseText)), &result); err != nil {
 		log.Printf("JSON parse error: %v", err)
-		return map[string]interface{}{
+		return map[string]any{
 			"summary":          responseText,
 			"should_create_pr": false,
 		}

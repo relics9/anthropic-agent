@@ -29,7 +29,7 @@ func resolveRepo(serviceName string) string {
 	return ""
 }
 
-func createGitHubPR(analysis map[string]interface{}) string {
+func createGitHubPR(analysis map[string]any) string {
 	token := os.Getenv("GITHUB_TOKEN")
 	owner := os.Getenv("GITHUB_USER")
 	repo := resolveRepo(getStr(analysis, "service_name"))
@@ -48,10 +48,10 @@ func createGitHubPR(analysis map[string]interface{}) string {
 		log.Printf("GitHub ref fetch error: %v", err)
 		return ""
 	}
-	sha := refResp["object"].(map[string]interface{})["sha"].(string)
+	sha := refResp["object"].(map[string]any)["sha"].(string)
 
 	// Create new branch
-	if _, err := githubRequest("POST", baseURL+"/git/refs", headers, map[string]interface{}{
+	if _, err := githubRequest("POST", baseURL+"/git/refs", headers, map[string]any{
 		"ref": "refs/heads/" + branchName,
 		"sha": sha,
 	}); err != nil {
@@ -61,11 +61,11 @@ func createGitHubPR(analysis map[string]interface{}) string {
 
 	// Update file if specified
 	committed := false
-	if fix, ok := analysis["fix_suggestion"].(map[string]interface{}); ok {
+	if fix, ok := analysis["fix_suggestion"].(map[string]any); ok {
 		filePath := getStr(fix, "file_path")
 		if filePath != "" && !strings.Contains(filePath, " ") && !strings.Contains(filePath, "(") {
 			codeSnippet := getStrOr(fix, "code_snippet", "# Auto-generated fix\n")
-			updateData := map[string]interface{}{
+			updateData := map[string]any{
 				"message": fmt.Sprintf("fix: %s", getStrOr(analysis, "pr_title", "Auto-fix from AI agent")),
 				"content": base64.StdEncoding.EncodeToString([]byte(codeSnippet)),
 				"branch":  branchName,
@@ -92,7 +92,7 @@ func createGitHubPR(analysis map[string]interface{}) string {
 	}
 
 	// Create PR
-	fix, _ := analysis["fix_suggestion"].(map[string]interface{})
+	fix, _ := analysis["fix_suggestion"].(map[string]any)
 	fixDesc := ""
 	if fix != nil {
 		fixDesc = getStr(fix, "description")
@@ -112,7 +112,7 @@ func createGitHubPR(analysis map[string]interface{}) string {
 *This PR was automatically created by the AI Agent upon detecting a GCP error log. Model: claude-opus-4-6*`,
 		getStr(analysis, "root_cause"), fixDesc, getStr(analysis, "summary"))
 
-	prResp, err := githubRequest("POST", baseURL+"/pulls", headers, map[string]interface{}{
+	prResp, err := githubRequest("POST", baseURL+"/pulls", headers, map[string]any{
 		"title": getStrOr(analysis, "pr_title", "fix: Auto-fix from AI agent"),
 		"body":  prBody,
 		"head":  branchName,
@@ -127,7 +127,7 @@ func createGitHubPR(analysis map[string]interface{}) string {
 	return htmlURL
 }
 
-func createGitHubIssue(analysis map[string]interface{}) string {
+func createGitHubIssue(analysis map[string]any) string {
 	token := os.Getenv("GITHUB_TOKEN")
 	owner := os.Getenv("GITHUB_USER")
 	repo := resolveRepo(getStr(analysis, "service_name"))
@@ -166,7 +166,7 @@ func createGitHubIssue(analysis map[string]interface{}) string {
 		title = "bug: GCP error detected by AI agent"
 	}
 
-	resp, err := githubRequest("POST", baseURL+"/issues", githubHeaders(token), map[string]interface{}{
+	resp, err := githubRequest("POST", baseURL+"/issues", githubHeaders(token), map[string]any{
 		"title": title,
 		"body":  issueBody,
 	})
@@ -188,7 +188,7 @@ func githubHeaders(token string) map[string]string {
 	}
 }
 
-func githubRequest(method, url string, headers map[string]string, data interface{}) (map[string]interface{}, error) {
+func githubRequest(method, url string, headers map[string]string, data any) (map[string]any, error) {
 	var body io.Reader
 	if data != nil {
 		b, err := json.Marshal(data)
@@ -226,7 +226,7 @@ func githubRequest(method, url string, headers map[string]string, data interface
 	}
 
 	log.Printf("[GitHub OUT] HTTP %d OK", resp.StatusCode)
-	var result map[string]interface{}
+	var result map[string]any
 	if err := json.Unmarshal(respBody, &result); err != nil {
 		return nil, err
 	}
